@@ -1,0 +1,78 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract Token is ERC20, Ownable {
+    event LogMessage(string message);
+    event VehiclesRedeemed(address indexed account, string vehicleType, uint256 quantity);
+
+    mapping(string => uint256) public vehiclePrices;
+    mapping(string => uint256) public vehicleInventories;
+
+    constructor() ERC20("Degen", "DGN") Ownable(msg.sender) {
+        // Initialize token with a total supply of 1 million tokens
+        _mint(msg.sender, 0);
+
+       
+        vehiclePrices["Bike"] = 50;
+        vehicleInventories["Bike"] = 10;
+
+        vehiclePrices["Bicycle"] = 30;
+        vehicleInventories["Bicycle"] = 15;
+
+        vehiclePrices["Car"] = 100;
+        vehicleInventories["Car"] = 5;
+
+        vehiclePrices["Scooter"] = 20;
+        vehicleInventories["Scooter"] = 20;
+    }
+
+    function mintTokens(address account, uint256 amount) public onlyOwner {
+        _mint(account, amount);
+    }
+
+    function burnTokens(uint256 amount) public {
+        require(balanceOf(msg.sender) >= amount, "Insufficient funds for burning tokens");
+        _burn(msg.sender, amount);
+        emit LogMessage("Tokens burned successfully");
+    }
+
+    function transferTokens(address recipient, uint256 amount) external {
+        require(balanceOf(msg.sender) >= amount, "Insufficient funds for transferring tokens");
+        _transfer(msg.sender, recipient, amount);
+    }
+
+    function redeemVehicle(string memory vehicleType, uint256 quantity) external {
+        require(bytes(vehicleType).length > 0, "Vehicle type cannot be empty");
+        require(quantity > 0, "Quantity must be greater than zero");
+
+        uint256 totalPrice = vehiclePrices[vehicleType] * quantity;
+        require(balanceOf(msg.sender) >= totalPrice, "Insufficient funds for redeeming vehicle");
+        require(vehicleInventories[vehicleType] >= quantity, "Insufficient vehicle inventory for redemption");
+
+        address user = msg.sender;
+
+        _burn(user, totalPrice);
+        vehicleInventories[vehicleType] -= quantity;
+
+        emit LogMessage("Vehicle redeemed successfully");
+    }
+
+    // New function: Purchase Vehicle
+    function purchaseVehicle(string memory vehicleType) external {
+        require(bytes(vehicleType).length > 0, "Vehicle type cannot be empty");
+        require(vehicleInventories[vehicleType] > 0, "No vehicles available for purchase");
+
+        uint256 totalPrice = vehiclePrices[vehicleType];
+        require(balanceOf(msg.sender) >= totalPrice, "Insufficient funds for purchasing vehicle");
+
+        address user = msg.sender;
+
+        _burn(user, totalPrice);
+        vehicleInventories[vehicleType]--;
+
+        emit VehiclesRedeemed(user, vehicleType, 1);
+    }
+}
